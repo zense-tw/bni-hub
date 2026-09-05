@@ -4,7 +4,7 @@
   "orgName": "Zense 智感資訊科技有限公司",
   "liffId": "2011463737-i0QZU97b",
   "lineChannelId": "2011463737",
-  "gasUrl": "",
+  "gasUrl": "https://script.google.com/macros/s/AKfycbwEVFCGoj_S7TrYyiukFJmUhPnnbwCLutseZEYfbbgZpupE3btx2GRVDip8ycn9bBDE/exec",
   "sheetId": "1132NvjLZJ04Uuhjww5Nb-H3gtKEPBJfHmJCQvApAoGk",
   "checkinWindow": { "lateAfterMinutes": null, "closeAfterMinutes": null },
   "zenseEntry": { "enabled": false, "ref": "hongli" },

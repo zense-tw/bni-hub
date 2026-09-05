@@ -25,11 +25,27 @@ BNI 分會會務工具（LINE 掃碼簽到＋幹部台）。一套程式 `app/` 
 8. 隨便呼叫一次（例如瀏覽器打開 `<gasUrl>?op=config`），六個分頁（members／bindings／events／attendance／consents／config）會自動被建出來，不用手動先建。
 9. 打開試算表的 `config` 分頁，把幹部的 LINE 識別碼填進 `adminUserIds` 那一列（用逗號分隔）——這個識別碼會在幹部第一次打開 `<slug>/admin/` 但還沒被列入白名單時，畫面上直接顯示出來，複製貼上即可。
 
-## 驗收（一句指令）
+## 驗收
+
+GET 可以直接 curl；**POST 不能直接 curl**——GAS 網頁應用程式對每個請求都先回一個 302 轉址到
+一次性的 `script.googleusercontent.com/macros/echo?...` 網址，`curl -L` 追轉址時預設會把 POST
+偷偷變成 GET、把送出的內容弄丟，導致你以為「壞了」但其實後端邏輯是對的（2026-09-06 實測踩過這個坑）。
+瀏覽器的 `fetch()` 沒有這個問題，LIFF 頁面本身呼叫完全正常，這個坑只影響「用 curl 手動測 POST」。
 
 ```bash
 G="<GAS部署網址>"; E="20260906"
+
+# GET：直接 curl 沒問題
 curl -s "$G?op=arrivals&e=$E" | head -c 300; echo
 curl -s "$G?op=arrivals&e=NOPE" | grep -q '查無' && echo "對照組✅"
-curl -s -X POST "$G" -d '{"op":"checkin","userId":"Ufake","e":"'$E'"}' | grep -qi 'reject\|拒' && echo "偽造被擋✅"
+
+# POST：要手動追兩段轉址
+post_gas() {
+  local hdr=$(mktemp)
+  curl -s -m 20 -D "$hdr" -o /dev/null -X POST "$G" -d "$1"
+  local loc=$(grep -i '^location:' "$hdr" | sed 's/^[Ll]ocation: //' | tr -d '\r')
+  rm -f "$hdr"
+  [ -n "$loc" ] && curl -s -m 20 "$loc"
+}
+post_gas '{"op":"bind","idToken":"fake.garbage.token","name":"測試","industry":"測試"}' | grep -qi 'reject\|拒' && echo "假身分被擋✅"
 ```
