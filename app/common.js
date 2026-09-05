@@ -15,8 +15,10 @@
     // 這樣同一支 common.js 不管被哪一層頁面引用，路徑都算得出來。
     var parts = global.location.pathname.split('/').filter(Boolean);
     var idx = parts.lastIndexOf(slug);
-    var depth = idx >= 0 ? (parts.length - 1 - idx) : 0; // 頁面比 <slug>/ 深幾層
-    var up = new Array(depth + 1).join('../');
+    // 要跳出幾層才能回到 <slug>/ 的上一層（repo 根目錄）：
+    // <slug> 本身算一層，之後每多一層子資料夾（例如 admin/）再各加一層。
+    var upLevels = idx >= 0 ? (parts.length - idx) : 0;
+    var up = new Array(upLevels + 1).join('../');
     var url = up + 'chapters/' + slug + '/config.json?_=' + Date.now();
     return fetch(url).then(function (r) {
       if (!r.ok) throw new Error('config.json 讀取失敗（' + r.status + '）');
