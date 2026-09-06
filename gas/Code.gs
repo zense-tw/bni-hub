@@ -12,8 +12,13 @@
  * GET  → arrivals, stats, config（唯讀，不用鎖）
  * POST → bind, checkin, openEvent, closeEvent（會寫入，一律要 idToken，寫入時上鎖）
  *
- * 第一次呼叫任何一個動作時，ensureSheets_() 會自動把六個分頁與標題列建好，
- * 不用手動先建表。
+ * 第一次呼叫任何一個動作時，ensureSheets_() 會自動把分頁與標題列建好，不用手動先建表。
+ *
+ * 幹部名單：獨立一張 admins 分頁（姓名／當屆職務／LINE識別碼／加入時間），⛔ 不是塞在
+ * config 分頁的一個逗號字串裡——秘書要看得懂「誰是幹部、當什麼職務」，不是一串代碼。
+ * 加新幹部的流程：本人先打開幹部台一次（會顯示出自己的識別碼）→ 把識別碼、姓名、職務
+ * 三個都告訴秘書 → 秘書在 admins 分頁新增一列。也可以先只填姓名／職務（識別碼留空占位），
+ * 等本人回報識別碼再補上——只要 userId 欄是空的，這個人就還沒真的擁有幹部權限。
  */
 
 var SHEETS = {
@@ -22,7 +27,8 @@ var SHEETS = {
   EVENTS: 'events',
   ATTENDANCE: 'attendance',
   CONSENTS: 'consents',
-  CONFIG: 'config'
+  CONFIG: 'config',
+  ADMINS: 'admins'
 };
 
 var HEADERS = {
@@ -31,7 +37,8 @@ var HEADERS = {
   events: ['eventId', 'createdAt', 'createdBy', 'status', 'closedAt'],
   attendance: ['eventId', 'memberId', 'userId', 'name', 'source', 'timestamp'],
   consents: ['userId', 'kind', 'version', 'timestamp'],
-  config: ['key', 'value', 'note']
+  config: ['key', 'value', 'note'],
+  admins: ['name', 'role', 'userId', 'addedAt']
 };
 
 // ⚠️ lineChannelId 這一格是【推論】：LINE 官方文件說 LIFF ID 的格式是「{Channel ID}-{隨機碼}」，
@@ -40,12 +47,18 @@ var HEADERS = {
 var DEFAULT_CONFIG_ROWS = [
   ['chapterName', 'BNI 宏力分會', ''],
   ['orgName', 'Zense 智感資訊科技有限公司', ''],
-  ['adminUserIds', '', '秘書可編輯：LINE userId，逗號分隔，幹部台的白名單（先留空，第一個幹部要用 LIFF 頁顯示出來的識別碼手動填進來）'],
   ['lineChannelId', '2011463737', '【推論，來自 LIFF ID 前段】用來驗證 idToken；若驗證一直失敗，先確認這個值對不對'],
   ['lateAfterMinutes', '', ''],
   ['closeAfterMinutes', '', ''],
   ['privacyVersion', 'v1-2026-09-06', '']
 ];
+
+// 幹部名單改讀 admins 分頁的 userId 欄（過濾空白列），不再讀 config 分頁的字串。
+function getAdminUserIds_() {
+  return readAll_(SHEETS.ADMINS)
+    .map(function (r) { return String(r.userId || '').trim(); })
+    .filter(Boolean);
+}
 
 function ensureSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -96,7 +109,7 @@ function getConfig_() {
   var rows = readAll_(SHEETS.CONFIG);
   var cfg = {};
   rows.forEach(function (r) { cfg[r.key] = r.value; });
-  cfg.adminUserIds = String(cfg.adminUserIds || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  cfg.adminUserIds = getAdminUserIds_();
   return cfg;
 }
 
@@ -303,7 +316,7 @@ function doOpenEvent_(body, cfg) {
     return jsonOut_({ ok: false, error: '拒絕：' + err.message });
   }
   if (cfg.adminUserIds.indexOf(adminId) === -1) {
-    return jsonOut_({ ok: false, error: '拒絕：這個帳號不是幹部（先把你的識別碼加進 config 分頁的 adminUserIds）' });
+    return jsonOut_({ ok: false, error: '拒絕：這個帳號不是幹部（請秘書在 admins 分頁加一列，userId 填 ' + adminId + '）' });
   }
   var eventId = body.e || Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyyMMdd');
   var existing = findEvent_(eventId);
@@ -342,14 +355,14 @@ function doCloseEvent_(body, cfg) {
 }
 
 /**
- * 手動執行一次即可：把 config 分頁以外的分頁設成「其他編輯者僅檢視」。
+ * 手動執行一次即可：把 config／admins 以外的分頁設成「其他編輯者僅檢視」。
  * ⚠️ 這個函式⛔ 不會自動被呼叫——它會改變別人的編輯權限，屬於「回不去要先想清楚」的操作，
  * 交給 Ted／秘書自己決定何時執行：Apps Script 編輯器左上角函式選單選 protectDataSheets_，按執行。
  */
 function protectDataSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(HEADERS).forEach(function (name) {
-    if (name === SHEETS.CONFIG) return;
+    if (name === SHEETS.CONFIG || name === SHEETS.ADMINS) return;
     var sh = ss.getSheetByName(name);
     if (!sh) return;
     var protection = sh.protect().setDescription('僅供幹部台程式寫入，人工編輯請走幹部台功能');

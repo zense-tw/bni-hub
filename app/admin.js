@@ -43,7 +43,8 @@
       var admins = (res.config && res.config.adminUserIds) || [];
       if (admins.indexOf(USERID) === -1) {
         render('<div class="state warn"><div class="icon">🔒</div><h2>僅限幹部</h2>' +
-          '<p>這個帳號不在幹部名單裡。請秘書到試算表 config 分頁把你的 LINE 帳號加進 adminUserIds。<br>' +
+          '<p>這個帳號不在幹部名單裡。請秘書到試算表 <b>admins</b> 分頁新增一列：姓名、當屆職務，' +
+          'userId 欄填下面這串。<br>' +
           '你的識別碼：<code style="font-size:11px">' + Hub.esc(USERID) + '</code></p></div>');
         return;
       }

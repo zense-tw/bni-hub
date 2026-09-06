@@ -23,7 +23,7 @@ BNI 分會會務工具（LINE 掃碼簽到＋幹部台）。一套程式 `app/` 
 6. 複製拿到的網址（長得像 `https://script.google.com/macros/s/xxxxx/exec`），這就是 `gasUrl`。
 7. 把 `gasUrl` 填進 `chapters/<slug>/config.json`，推上 GitHub。
 8. 隨便呼叫一次（例如瀏覽器打開 `<gasUrl>?op=config`），六個分頁（members／bindings／events／attendance／consents／config）會自動被建出來，不用手動先建。
-9. 打開試算表的 `config` 分頁，把幹部的 LINE 識別碼填進 `adminUserIds` 那一列（用逗號分隔）——這個識別碼會在幹部第一次打開 `<slug>/admin/` 但還沒被列入白名單時，畫面上直接顯示出來，複製貼上即可。
+9. 打開試算表的 `admins` 分頁，一列一個幹部：**姓名｜當屆職務｜userId｜加入時間**。`userId` 這一格會在幹部第一次打開 `<slug>/admin/` 但還沒被列入白名單時，畫面上直接顯示出來（也會出現在 GAS 回的錯誤訊息裡），複製貼上即可。可以先只填姓名、職務，`userId` 留空占位，等本人回報再補——留空的那一列不會有任何權限。
 
 ## 驗收
 
